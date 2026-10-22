@@ -1,3 +1,6 @@
+__pycache__/
+**/__pycache__/
+
 # Keep the data directory layout, but ignore dataset contents.
 data/download_mixamo/**
 !data/download_mixamo/
@@ -12,3 +15,7 @@ data/mixamo_joints3d/joints3d_npy/**
 data/mixamo_joints3d/jointsDict/**
 !data/mixamo_joints3d/jointsDict/
 !data/mixamo_joints3d/jointsDict/.gitkeep
+
+data/motion/**
+!data/motion/
+!data/motion/.gitkeep
