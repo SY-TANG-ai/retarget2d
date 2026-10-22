@@ -1,0 +1,12 @@
+# Keep the data directories themselves, but ignore generated/raw contents.
+data/joints3d_npy/**
+!data/joints3d_npy/
+!data/joints3d_npy/.gitkeep
+
+data/jointsDict/**
+!data/jointsDict/
+!data/jointsDict/.gitkeep
+
+data/mixamo_joints3d/**
+!data/mixamo_joints3d/
+!data/mixamo_joints3d/.gitkeep
