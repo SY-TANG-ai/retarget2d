@@ -26,7 +26,9 @@ BASE_JOINT_NAMES = [
 ]
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-SRC_DATA_DIR = os.path.join(SCRIPT_DIR, "data", "download_mixamo")
+# SRC_DATA_DIR = os.path.join(SCRIPT_DIR, "data", "download_mixamo")
+SRC_DATA_DIR = r"D:\Research\Animation\data\mixamo_raw\_anims"
+
 OUT_DATA_DIR = os.path.join(SCRIPT_DIR, "data", "mixamo_joints3d")
 MIN_NR_FRAMES = 64
 
@@ -97,21 +99,28 @@ def get_joint3d_positions(armature, joint_names, frame_idx):
 # fbx -> json
 def main():
     ensure_dir(OUT_DATA_DIR)
+    joints_dict_root = os.path.join(OUT_DATA_DIR, "jointsDict")
+    ensure_dir(joints_dict_root)
 
     files = sorted(
         name for name in os.listdir(SRC_DATA_DIR) if name.lower().endswith(".fbx")
     )
     for j, name in enumerate(files, start=1):
         path = os.path.join(SRC_DATA_DIR, name)
+        save_dir = os.path.join(joints_dict_root, name)
+        if os.path.exists(save_dir):
+            print("[{}/{}] skip existing json dir {}".format(j, len(files), save_dir))
+            continue
+
         since = time.time()
 
         clear_scene_and_import_fbx(path)
         armature = get_armature_object()
         frame_start, frame_end = get_frame_range(armature)
         if frame_end - frame_start < MIN_NR_FRAMES - 1:
+            print(f"skip {name} with {frame_end - frame_start} frames")
             continue
 
-        save_dir = os.path.join(OUT_DATA_DIR, "jointsDict", name)
         ensure_dir(save_dir)
 
         for frame_idx in range(frame_start, frame_end + 1):
@@ -153,6 +162,9 @@ def json2npy():
         motion = np.stack(motion, axis=2)
         stem = os.path.splitext(name)[0]
         save_path = os.path.join(npy_dir, "{}.npy".format(stem))
+        if os.path.exists(save_path):
+            print("skip existing npy {}".format(save_path))
+            continue
         np.save(save_path, motion)
 
 
