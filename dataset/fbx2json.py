@@ -50,7 +50,7 @@ def get_armature_object():
     raise ValueError("No armature object found in imported FBX.")
 
 
-def resolve_pose_bone(pose_bones, bone_name):
+def resolve_pose_bone(pose_bones, bone_name): 
     bone = pose_bones.get(bone_name)
     if bone is not None:
         return bone
@@ -88,6 +88,7 @@ def get_joint3d_positions(armature, joint_names, frame_idx):
 
     out_dict = {"pose_keypoints_3d": []}
     for name in joint_names:
+        # get joint by locating the bone origin
         # bone origin -> armature coordinate -> global space
         bone = resolve_pose_bone(pose_bones, name)
         global_location = armature.matrix_world @ bone.matrix @ Vector((0.0, 0.0, 0.0))
@@ -154,7 +155,7 @@ def json2npy():
             with open(os.path.join(joint_dir, frame_file)) as f:
                 info = json.load(f)
             joint = np.array(info["pose_keypoints_3d"], dtype=np.float32).reshape((-1, 3))
-            motion.append(joint[:15, :])
+            motion.append(joint)
 
         if not motion:
             continue

@@ -5,3 +5,8 @@ data/download_mixamo/
 data/mixamo_joints3d/joints3d_npy/
 data/mixamo_joints3d/jointsDict/
 data/motion/
+data/download_plan.json
+
+train_log/log/
+train_log/*/log/
+train_log/exp_full/model/

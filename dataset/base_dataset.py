@@ -6,29 +6,79 @@ import glob
 import numpy as np
 
 
+FLAT_TEST_CHARACTERS = ['Ty', 'Sporty_Granny', 'X_Bot', 'Y_Bot']
+
+
+def _is_flat_layout(data_dir):
+    return bool(glob.glob(os.path.join(data_dir, '*__*', '*.npy')))
+
+
+def _scan_flat_layout(data_dir):
+    entries = {}
+    for combo_dir in sorted(glob.glob(os.path.join(data_dir, '*__*'))):
+        if not os.path.isdir(combo_dir):
+            continue
+        combo_name = os.path.basename(combo_dir)
+        if '__' not in combo_name:
+            continue
+        char_name, motion_name = combo_name.split('__', 1)
+        for path in sorted(glob.glob(os.path.join(combo_dir, '*.npy'))):
+            motion_item = '{}/{}'.format(motion_name, os.path.basename(path))
+            entries[(char_name, motion_item)] = path
+    return entries
+
+
+def _split_flat_characters(character_names, phase):
+    character_names = sorted(character_names)
+    test_names = [name for name in FLAT_TEST_CHARACTERS if name in character_names]
+    if not test_names or len(test_names) >= len(character_names):
+        nr_test = max(1, len(character_names) // 4)
+        test_names = character_names[-nr_test:]
+    train_names = [name for name in character_names if name not in test_names]
+    return train_names if phase == 'train' else test_names
+
+
 class _MixamoDatasetBase(Dataset):
     def __init__(self, phase, config):
         super(_MixamoDatasetBase, self).__init__()
 
         assert phase in ['train', 'test']
-        self.data_root = os.path.join(config.data_dir, phase)
+        self.data_root = config.data_dir
         self.phase = phase
         self.unit = config.unit
         self.view_angles = config.view_angles
         self.meanpose_path = config.meanpose_path
         self.stdpose_path = config.stdpose_path
+        self.flat_layout = _is_flat_layout(config.data_dir)
+        self.flat_entries = None
 
-        # FIXME : decide character_names
-        if phase == 'train':
-            self.character_names = ['Aj', 'BigVegas', 'Claire', 'Jasper', 'Lola', 'Malcolm',
-                                    'Pearl', 'Warrok', 'Globin', 'Kaya', 'PeanutMan']
-            self.aug = True
+        if self.flat_layout:
+            self.flat_entries = _scan_flat_layout(config.data_dir)
+            all_chars = sorted({char for char, _ in self.flat_entries.keys()})
+            self.character_names = _split_flat_characters(all_chars, phase)
+            motion_sets = []
+            for char in self.character_names:
+                motion_sets.append({motion for c, motion in self.flat_entries.keys() if c == char})
+            common_motions = set.intersection(*motion_sets) if motion_sets else set()
+            self.motion_names = sorted(common_motions)
         else:
-            self.character_names = ['Ty', 'Andromeda', 'Pumpkinhulk', 'SportyGranny']
-            self.aug = False
+            self.data_root = os.path.join(config.data_dir, phase)
+            # FIXME : decide character_names
+            if phase == 'train':
+                self.character_names = ['Aj', 'BigVegas', 'Claire', 'Jasper', 'Lola', 'Malcolm',
+                                        'Pearl', 'Warrok', 'Globin', 'Kaya', 'PeanutMan']
+            else:
+                self.character_names = ['Ty', 'Andromeda', 'Pumpkinhulk', 'SportyGranny']
 
-        items = glob.glob(os.path.join(self.data_root, self.character_names[0], '*/motions/*.npy'))
-        self.motion_names = ['/'.join(x.split('/')[-3:]) for x in items]
+            items = sorted(glob.glob(os.path.join(self.data_root, self.character_names[0], '*/motions/*.npy')))
+            char_root = os.path.join(self.data_root, self.character_names[0])
+            self.motion_names = [os.path.relpath(x, char_root).replace(os.sep, '/') for x in items]
+
+        self.aug = phase == 'train'
+        if not self.character_names:
+            raise RuntimeError('No characters found for phase {} under {}'.format(phase, config.data_dir))
+        if not self.motion_names:
+            raise RuntimeError('No motion windows found for phase {} under {}'.format(phase, config.data_dir))
 
         self.mean_pose, self.std_pose = get_meanpose(config)
 
@@ -38,6 +88,11 @@ class _MixamoDatasetBase(Dataset):
         :param char_name: character_name
         :return:
         """
+        if self.flat_layout:
+            try:
+                return self.flat_entries[(char_name, mot_name)]
+            except KeyError:
+                raise RuntimeError('Missing flat motion item: {} / {}'.format(char_name, mot_name))
         return os.path.join(self.data_root, char_name, mot_name)
 
     @staticmethod
@@ -128,7 +183,12 @@ def get_meanpose(config):
 
 
 def gen_meanpose(config):
-    all_paths = glob.glob(os.path.join(config.data_dir, 'train', '*/*/motions/*.npy'))
+    if _is_flat_layout(config.data_dir):
+        entries = _scan_flat_layout(config.data_dir)
+        train_chars = _split_flat_characters({char for char, _ in entries.keys()}, 'train')
+        all_paths = [path for (char, _), path in entries.items() if char in train_chars]
+    else:
+        all_paths = glob.glob(os.path.join(config.data_dir, 'train', '*/*/motions/*.npy'))
     all_joints = []
 
     for path in all_paths:

@@ -1,3 +1,9 @@
+import os
+
+# Work around duplicated OpenMP runtimes in some Windows Anaconda environments.
+# This must run before importing torch/numpy-dependent modules.
+os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
+
 from dataset import get_dataloader
 from common import config
 from model import get_autoencoder
@@ -5,7 +11,6 @@ from functional.utils import cycle
 from agent import get_training_agent
 from functional.visualization import visulize_motion_in_training
 import torch
-import os
 from collections import OrderedDict
 from tqdm import tqdm
 from tensorboardX import SummaryWriter

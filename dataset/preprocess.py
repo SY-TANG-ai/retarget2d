@@ -29,7 +29,8 @@ def main():
         os.makedirs(out_path)
         for i in range(nr_motions):
             save_path = os.path.join(out_path, '{}.npy'.format(i + 1))
-            window = animation[:, :, i * (len_frames // 2): i * (len_frames // 2) + len_frames]
+            window = animation[:, :, i * (len_frames // 2): i * (len_frames // 2) + len_frames] # take T=64 frames sequentially
+            # window: [, , T=64]
             np.save(save_path, window)
 
 if __name__ == "__main__":
